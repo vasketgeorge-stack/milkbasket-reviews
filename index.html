@@ -151,7 +151,7 @@ header{display:flex;align-items:flex-end;justify-content:space-between;margin-bo
     </div>
     <div class="grid g3">
       <div class="card"><div class="ct">Rating Split</div><div class="dnut"><canvas id="dchart" height="220"></canvas></div></div>
-      <div class="card"><div class="ct">Hourly Pattern (UTC)</div><canvas id="hchart" height="200"></canvas></div>
+      <div class="card"><div class="ct">Hourly Pattern (UTC)</div><div class="cfrow"><button class="cfbtn" onclick="setHView('avg',this)">Avg Rating</button><button class="cfbtn active" onclick="setHView('cnt',this)">Review Count</button></div><canvas id="hchart" height="200"></canvas></div>
       <div class="card"><div class="ct">Recent 1-Star Reviews</div><div class="rfeed" id="neg-feed"></div></div>
     </div>
     <div class="ai-box">
@@ -374,18 +374,29 @@ function buildDonut(dist){
   });
 }
 
+var hMode = 'cnt';
 function buildHourly(data){
   var h = {};
   data.forEach(function(r){ var hr=r._d.getUTCHours(); if(!h[hr])h[hr]={sum:0,cnt:0}; h[hr].sum+=r._s; h[hr].cnt++; });
   var hrs = Array.from({length:24},function(_,i){ return i; });
   if(hChart) hChart.destroy();
+  var isAvg = hMode === 'avg';
   hChart = new Chart(document.getElementById('hchart'),{
-    type:'line',
+    type: isAvg ? 'line' : 'bar',
     data:{labels:hrs.map(function(i){ return i+':00'; }),datasets:[{
-      data:hrs.map(function(i){ return h[i]?+(h[i].sum/h[i].cnt).toFixed(2):null; }),
-      borderColor:'#e8521a',backgroundColor:'rgba(232,82,26,0.1)',fill:true,borderWidth:2,pointRadius:2,tension:0.4,spanGaps:true}]},
-    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#e8e2d9'}},y:{min:3,max:5.1,grid:{color:'#e8e2d9'}}}}
+      data:hrs.map(function(i){ return isAvg ? (h[i]?+(h[i].sum/h[i].cnt).toFixed(2):null) : (h[i]?h[i].cnt:0); }),
+      borderColor:'#e8521a',backgroundColor: isAvg ? 'rgba(232,82,26,0.1)' : 'rgba(232,82,26,0.7)',
+      fill: isAvg, borderWidth:2, pointRadius:2, tension:0.4, spanGaps:true, borderRadius: isAvg ? 0 : 2}]},
+    options:{responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'#e8e2d9'}},y:{min: isAvg ? 3 : undefined, max: isAvg ? 5.1 : undefined, grid:{color:'#e8e2d9'}}}}
   });
+}
+
+function setHView(mode, btn){
+  hMode = mode;
+  document.querySelectorAll('.cfrow .cfbtn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  buildHourly(filtData.length>0?filtData:allData);
 }
 
 function buildFeeds(data){
