@@ -454,7 +454,7 @@ function runGemini(data, dist, avg, total){
     fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + GKEY, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.4,maxOutputTokens:600}})
+      body: JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.4,maxOutputTokens:2000}})
     })
     .then(function(r){ return r.json(); })
     .then(function(result){
