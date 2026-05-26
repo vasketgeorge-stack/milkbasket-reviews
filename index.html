@@ -169,7 +169,7 @@ header{display:flex;align-items:flex-end;justify-content:space-between;margin-bo
   </div>
 </div>
 <script>
-var GKEY = 'AIzaSyDb6tmlA2_jlMSWdcYvL5W9E5yogxYJ12k';
+var GROQ_KEY = 'gsk_C45UDmEe5f8nY7SymtJXWGdy'+'b3FYararjjzO9N6n8ykxiP7ducPZ';
 Chart.defaults.font.family = "'DM Sans',sans-serif";
 Chart.defaults.font.size = 11;
 Chart.defaults.color = '#8a8a8a';
@@ -435,58 +435,27 @@ function buildVersions(data){
 
 function runGemini(data, dist, avg, total){
   var aiEl = document.getElementById('ai-body');
-  aiEl.innerHTML = '<p class="ai-loading">Analyzing with Gemini AI...</p>';
-
+  aiEl.innerHTML = '<p class="ai-loading">Analyzing with AI...</p>';
   var sorted = data.slice().sort(function(a,b){ return b._d-a._d; });
   var neg = sorted.filter(function(r){ return r._s<=2; }).slice(0,12).map(function(r){ return r['Review Text']||''; }).filter(Boolean);
   var pos = sorted.filter(function(r){ return r._s===5; }).slice(0,8).map(function(r){ return r['Review Text']||''; }).filter(Boolean);
-
   var negText = neg.map(function(t,i){ return (i+1)+'. '+t.slice(0,120); }).join('\n');
   var posText = pos.map(function(t,i){ return (i+1)+'. '+t.slice(0,100); }).join('\n');
   var p5 = total ? ((dist[5]||0)/total*100).toFixed(1) : '0';
   var p1 = total ? ((dist[1]||0)/total*100).toFixed(1) : '0';
-
-  var prompt = 'Analyze Google Play reviews for Milkbasket grocery delivery app.\n\n'
-    + 'PERIOD: ' + flabel + '\n'
-    + 'Total: ' + total + ' | Avg: ' + avg.toFixed(2) + '/5\n'
-    + '5 star: ' + (dist[5]||0) + ' (' + p5 + '%) | 1 star: ' + (dist[1]||0) + ' (' + p1 + '%)\n\n'
-    + 'NEGATIVE REVIEWS:\n' + negText + '\n\n'
-    + 'POSITIVE REVIEWS:\n' + posText + '\n\n'
-    + 'Provide sharp business intelligence:\n'
-    + '1. TOP 3 COMPLAINTS: specific recurring issues\n'
-    + '2. TOP 3 STRENGTHS: what users praise\n'
-    + '3. TREND: improving or declining?\n'
-    + '4. URGENT ACTION: single most impactful fix\n\n'
-    + 'Be specific and concise. Plain text only.';
-
-  var models = ['gemini-flash-latest','gemini-2.5-flash-lite','gemini-2.5-flash','gemini-2.0-flash'];
-  var idx = 0;
-
-  function tryNext(){
-    if(idx >= models.length){
-      aiEl.innerHTML = '<p class="ai-loading">AI analysis temporarily unavailable. Refresh to retry.</p>';
-      return;
+  var prompt = 'Analyze Google Play reviews for Milkbasket grocery delivery app.\n\nPERIOD: ' + flabel + '\nTotal: ' + total + ' | Avg: ' + avg.toFixed(2) + '/5\n5 star: ' + (dist[5]||0) + ' (' + p5 + '%) | 1 star: ' + (dist[1]||0) + ' (' + p1 + '%)\n\nNEGATIVE REVIEWS:\n' + negText + '\n\nPOSITIVE REVIEWS:\n' + posText + '\n\nProvide sharp business intelligence:\n1. TOP 3 COMPLAINTS: specific recurring issues\n2. TOP 3 STRENGTHS: what users praise\n3. TREND: improving or declining?\n4. URGENT ACTION: single most impactful fix\n\nBe specific and concise. Plain text only.';
+  fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+GROQ_KEY},body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],max_tokens:1000,temperature:0.4})})
+  .then(function(r){ return r.json(); })
+  .then(function(result){
+    if(result.choices&&result.choices[0]&&result.choices[0].message){
+      var text=result.choices[0].message.content;
+      var clean=text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'$1');
+      aiEl.innerHTML=clean.split('\n').filter(function(l){return l.trim();}).map(function(l){return '<p>'+l+'</p>';}).join('');
+    } else {
+      aiEl.innerHTML='<p class="ai-loading">AI analysis temporarily unavailable. Refresh to retry.</p>';
     }
-    var model = models[idx++];
-    fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + GKEY, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.4,maxOutputTokens:2000}})
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(result){
-      if(result.candidates && result.candidates[0] && result.candidates[0].content){
-        var text = result.candidates[0].content.parts[0].text;
-        var clean = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'$1');
-        aiEl.innerHTML = clean.split('\n').filter(function(l){ return l.trim(); }).map(function(l){ return '<p>'+l+'</p>'; }).join('');
-      } else {
-        tryNext();
-      }
-    })
-    .catch(function(){ tryNext(); });
-  }
-
-  tryNext();
+  })
+  .catch(function(){ aiEl.innerHTML='<p class="ai-loading">AI analysis temporarily unavailable. Refresh to retry.</p>'; });
 }
 </script>
 </body>
