@@ -217,18 +217,20 @@ function applyPreset(days, btn){
   document.querySelectorAll('.pbtn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
   var now = new Date();
+  var allDatesForCap = allData.map(function(r){ return r._d; }).filter(function(d){ return !isNaN(d); });
+  var latestDataDate = new Date(Math.max.apply(null,allDatesForCap));
+  var capDate = latestDataDate < now ? latestDataDate : now;
   if(days === 0){
     filtData = allData.slice();
     flabel = 'All Time';
-    var dates = allData.map(function(r){ return r._d; }).filter(function(d){ return !isNaN(d); });
-    document.getElementById('d-from').value = new Date(Math.min.apply(null,dates)).toISOString().slice(0,10);
-    document.getElementById('d-to').value = new Date(Math.max.apply(null,dates)).toISOString().slice(0,10);
+    document.getElementById('d-from').value = new Date(Math.min.apply(null,allDatesForCap)).toISOString().slice(0,10);
+    document.getElementById('d-to').value = latestDataDate.toISOString().slice(0,10);
   } else {
-    var from = new Date(now - days*86400000);
-    filtData = allData.filter(function(r){ return r._d >= from && r._d <= now; });
+    var from = new Date(capDate - days*86400000);
+    filtData = allData.filter(function(r){ return r._d >= from && r._d <= capDate; });
     flabel = 'Last ' + days + ' Days';
     document.getElementById('d-from').value = from.toISOString().slice(0,10);
-    document.getElementById('d-to').value = now.toISOString().slice(0,10);
+    document.getElementById('d-to').value = capDate.toISOString().slice(0,10);
   }
   render(filtData);
 }
