@@ -265,7 +265,10 @@ function render(data){
 
   document.getElementById('fresult').innerHTML = '<strong>' + (total>0?total:allData.length).toLocaleString() + '</strong> reviews · ' + flabel;
   document.getElementById('k-total').textContent = (total>0?total:allData.length).toLocaleString();
-  document.getElementById('k-span').textContent = fmtM(mn) + ' — ' + fmtM(mx);
+  var allDatesGlobal = allData.map(function(r){ return r._d; }).filter(function(d){ return !isNaN(d); });
+  var latestGlobal = new Date(Math.max.apply(null,allDatesGlobal));
+  var mxCapped = mx > latestGlobal ? latestGlobal : mx;
+  document.getElementById('k-span').textContent = fmtD(mn) + ' — ' + fmtD(mxCapped);
   document.getElementById('k-5s').textContent = (dist[5]||0).toLocaleString();
   document.getElementById('k-5p').textContent = ((dist[5]||0)/kTotal*100).toFixed(1) + '% of total';
   document.getElementById('k-1s').textContent = (dist[1]||0).toLocaleString();
