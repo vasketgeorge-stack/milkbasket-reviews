@@ -49,10 +49,25 @@ def fetch_existing_csv():
     raw_url    = first_file["raw_url"]
     content    = requests.get(raw_url).text
 
+    # Strip BOM if present
+    content = content.lstrip("\ufeff")
+
     reader   = csv.DictReader(io.StringIO(content))
     existing = {}
+
+    # Find the reviewId column (handles BOM or spacing variants)
     for row in reader:
-        existing[row["reviewId"]] = row
+        rid = None
+        for key in row:
+            if key.strip().lstrip("\ufeff") == "reviewId":
+                rid = row[key]
+                break
+        if rid:
+            existing[rid] = row
+        else:
+            print(f"  Warning: skipping row with no reviewId. Columns: {list(row.keys())}")
+
+    print(f"  Loaded {len(existing)} existing reviews from Gist")
     return existing
 
 # ============================================================
