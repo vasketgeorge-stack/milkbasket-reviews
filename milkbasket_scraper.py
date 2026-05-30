@@ -30,7 +30,8 @@ GMAIL_SENDER    = os.environ["GMAIL_SENDER"]
 GMAIL_APP_PASS  = os.environ["GMAIL_APP_PASS"]
 EMAIL_RECIPIENT = os.environ["EMAIL_RECIPIENT"]
 
-LANGUAGES = ["en", "hi", "mr", "gu", "bn", "ta", "te", "kn", "ml", "pa"]
+GIST_FILENAME   = "milkbasket_reviews.csv"   # Always use this specific file
+LANGUAGES       = ["en", "hi", "mr", "gu", "bn", "ta", "te", "kn", "ml", "pa"]
 
 # ============================================================
 # FETCH EXISTING CSV FROM GIST
@@ -42,20 +43,19 @@ def fetch_existing_csv():
     resp.raise_for_status()
 
     files = resp.json().get("files", {})
-    if not files:
+
+    # ALWAYS read the specific file by name — never use "first file"
+    if GIST_FILENAME not in files:
+        print(f"  '{GIST_FILENAME}' not found in Gist. Starting fresh.")
         return {}
 
-    first_file = next(iter(files.values()))
-    raw_url    = first_file["raw_url"]
-    content    = requests.get(raw_url).text
-
-    # Strip BOM if present
-    content = content.lstrip("\ufeff")
+    raw_url = files[GIST_FILENAME]["raw_url"]
+    content = requests.get(raw_url).text
+    content = content.lstrip("\ufeff")  # Strip BOM
 
     reader   = csv.DictReader(io.StringIO(content))
     existing = {}
 
-    # Find the reviewId column (handles BOM or spacing variants)
     for row in reader:
         rid = None
         for key in row:
@@ -110,14 +110,21 @@ def scrape_new_reviews(existing_ids):
 # MERGE
 # ============================================================
 def merge(existing, scraped):
-    merged = {**existing, **scraped}
+    merged    = {**existing, **scraped}
     new_count = len(scraped)
     return merged, new_count
 
 # ============================================================
-# UPLOAD TO GIST
+# UPLOAD TO GIST — with safety check to prevent data loss
 # ============================================================
-def upload_to_gist(merged):
+def upload_to_gist(merged, existing_count):
+    # SAFETY CHECK: never upload if total went DOWN (means something went wrong)
+    if len(merged) < existing_count:
+        raise Exception(
+            f"SAFETY ABORT: merged count ({len(merged)}) < existing count ({existing_count}). "
+            f"Refusing to overwrite Gist to prevent data loss."
+        )
+
     fieldnames = ["reviewId", "userName", "score", "at", "content",
                   "thumbsUpCount", "replyContent", "repliedAt", "language"]
 
@@ -129,7 +136,8 @@ def upload_to_gist(merged):
 
     url     = f"https://api.github.com/gists/{GIST_ID}"
     headers = {"Authorization": f"token {GITHUB_TOKEN}", "Content-Type": "application/json"}
-    payload = {"files": {"milkbasket_reviews.csv": {"content": output.getvalue()}}}
+    # Always write to the SPECIFIC filename
+    payload = {"files": {GIST_FILENAME: {"content": output.getvalue()}}}
 
     resp = requests.patch(url, headers=headers, json=payload)
     resp.raise_for_status()
@@ -178,9 +186,10 @@ if __name__ == "__main__":
 
     try:
         existing            = fetch_existing_csv()
+        existing_count      = len(existing)
         scraped             = scrape_new_reviews(set(existing.keys()))
         merged, new_count   = merge(existing, scraped)
-        upload_to_gist(merged)
+        upload_to_gist(merged, existing_count)
         send_email(merged, new_count)
         print("\nDone.\n")
     except Exception as e:
