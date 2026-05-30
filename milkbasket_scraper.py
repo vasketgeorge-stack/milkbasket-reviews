@@ -150,7 +150,7 @@ def send_email(merged, new_count):
     total = len(merged)
     today = datetime.now().strftime("%d %b %Y")
 
-    subject = f"Milkbasket Reviews Update — {today} ({new_count} new)"
+    subject = f"[GitHub Actions] Milkbasket Reviews Update — {today} ({new_count} new)"
     body    = f"""Milkbasket Play Store Reviews — Daily Update
 ================================================
 Date          : {today}
@@ -159,7 +159,8 @@ Total in DB   : {total}
 
 Dashboard     : https://vasketgeorge-stack.github.io/milkbasket-reviews/
 
-Automated by GitHub Actions.
+Source        : GitHub Actions (Cloud Backup)
+Triggered at  : 9:30 AM IST (automatic)
 """
 
     msg            = MIMEMultipart()
@@ -195,3 +196,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\nScript failed: {e}")
         raise
+
+
